@@ -1,5 +1,10 @@
 # OData Query Parser for PHP
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/novabytes/odata-query-parser.svg)](https://packagist.org/packages/novabytes/odata-query-parser)
+![Test Status](https://img.shields.io/github/actions/workflow/status/novabytes-labs/odata-query-parser/ci.yml?label=tests&branch=master)
+![Code Style Status](https://img.shields.io/github/actions/workflow/status/novabytes-labs/odata-query-parser/ci.yml?label=code%20style&branch=master)
+[![Total Downloads](https://img.shields.io/packagist/dt/novabytes/odata-query-parser.svg)](https://packagist.org/packages/novabytes/odata-query-parser)
+
 A framework-agnostic OData 4 query string parser for PHP 8.2+. Parses `$filter`, `$select`, `$expand`, `$orderby`, `$top`, `$skip`, and `$count` into immutable AST objects.
 
 Zero runtime dependencies.
