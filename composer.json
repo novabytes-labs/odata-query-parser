@@ -28,6 +28,9 @@
             "NovaBytes\\OData\\Tests\\": "tests/"
         }
     },
+    "scripts": {
+        "test": "vendor/bin/phpunit"
+    },
     "archive": {
         "exclude": [
             "spec"
