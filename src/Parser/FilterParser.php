@@ -98,11 +98,17 @@ class FilterParser
 
     private Lexer $lexer;
 
+    /**
+     * Create a new filter parser for the given lexer.
+     */
     public function __construct(Lexer $lexer)
     {
         $this->lexer = $lexer;
     }
 
+    /**
+     * Parse an OData $filter expression string into an AST.
+     */
     public static function parse(string $input): Expression
     {
         $lexer = new Lexer($input);
@@ -121,6 +127,9 @@ class FilterParser
         return $expr;
     }
 
+    /**
+     * Parse an expression using Pratt parsing with the given minimum binding power.
+     */
     public function parseExpression(int $minBp = 0): Expression
     {
         $left = $this->parsePrefix();
@@ -143,6 +152,9 @@ class FilterParser
         return $left;
     }
 
+    /**
+     * Parse a prefix expression (literal, unary operator, grouping, or identifier).
+     */
     private function parsePrefix(): Expression
     {
         $token = $this->lexer->current();
@@ -179,12 +191,18 @@ class FilterParser
         };
     }
 
+    /**
+     * Consume the current token and return a Literal AST node.
+     */
     private function parseLiteral(Token $token, string|int|float|bool|null $value, LiteralType $type): Literal
     {
         $this->lexer->advance();
         return new Literal($value, $type);
     }
 
+    /**
+     * Parse a decimal literal, handling NaN, INF, and -INF special values.
+     */
     private function parseDecimalLiteral(Token $token): Literal
     {
         $this->lexer->advance();
@@ -199,6 +217,9 @@ class FilterParser
         return new Literal($value, LiteralType::Decimal);
     }
 
+    /**
+     * Parse a 'not' unary expression.
+     */
     private function parseNot(): UnaryExpression
     {
         $this->lexer->advance(); // consume 'not'
@@ -206,6 +227,9 @@ class FilterParser
         return new UnaryExpression(UnaryOperator::Not, $operand);
     }
 
+    /**
+     * Parse a unary minus (negation) expression.
+     */
     private function parseNegate(): UnaryExpression
     {
         $this->lexer->advance(); // consume '-'
@@ -213,6 +237,9 @@ class FilterParser
         return new UnaryExpression(UnaryOperator::Negate, $operand);
     }
 
+    /**
+     * Parse a parenthesized grouping or a list expression (expr, expr, ...).
+     */
     private function parseParenOrList(): Expression
     {
         $this->lexer->advance(); // consume '('
@@ -233,6 +260,9 @@ class FilterParser
         return $first; // just grouping
     }
 
+    /**
+     * Parse an identifier as a function call, property path, or lambda expression.
+     */
     private function parseIdentifierExpression(): Expression
     {
         $name = $this->lexer->current()->value;
@@ -246,6 +276,9 @@ class FilterParser
         return $this->parsePropertyPathOrLambda();
     }
 
+    /**
+     * Parse a built-in function call with its argument list.
+     */
     private function parseFunctionCall(): FunctionCall
     {
         $name = $this->lexer->advance()->value; // consume function name
@@ -273,6 +306,9 @@ class FilterParser
         return new FunctionCall($name, $args);
     }
 
+    /**
+     * Parse a property path, optionally followed by a lambda (any/all) or function call.
+     */
     private function parsePropertyPathOrLambda(): Expression
     {
         $segments = [$this->lexer->advance()->value]; // consume first identifier
@@ -321,6 +357,9 @@ class FilterParser
         return new PropertyPath($segments);
     }
 
+    /**
+     * Parse a lambda expression (any/all) with optional variable and predicate.
+     */
     private function parseLambda(Expression $collection, LambdaOperator $operator): LambdaExpression
     {
         $this->lexer->expect(TokenType::OpenParen);
@@ -340,16 +379,25 @@ class FilterParser
         return new LambdaExpression($collection, $operator, $variable, $predicate);
     }
 
+    /**
+     * Check whether the given name is a recognized OData built-in function.
+     */
     private function isBuiltinFunction(string $name): bool
     {
         return array_key_exists($name, self::BUILTIN_FUNCTIONS);
     }
 
+    /**
+     * Return the binding power (precedence) for the given operator token, or null if not an operator.
+     */
     private function getBindingPower(Token $token): ?int
     {
         return self::BINDING_POWER[$token->type->value] ?? null;
     }
 
+    /**
+     * Convert an operator token to its corresponding BinaryOperator enum value.
+     */
     private function tokenToBinaryOperator(Token $token): BinaryOperator
     {
         return BinaryOperator::from($token->type->value);

@@ -43,6 +43,9 @@ class Lexer
         'all' => TokenType::All,
     ];
 
+    /**
+     * Tokenize the given OData expression string.
+     */
     public function __construct(string $input)
     {
         $this->input = $input;
@@ -51,16 +54,25 @@ class Lexer
         $this->scan();
     }
 
+    /**
+     * Return the token at the current cursor position.
+     */
     public function current(): Token
     {
         return $this->tokens[$this->cursor] ?? new Token(TokenType::Eof, '', $this->length);
     }
 
+    /**
+     * Return the token at the given offset from the current cursor position.
+     */
     public function peek(int $offset = 1): Token
     {
         return $this->tokens[$this->cursor + $offset] ?? new Token(TokenType::Eof, '', $this->length);
     }
 
+    /**
+     * Return the current token and advance the cursor.
+     */
     public function advance(): Token
     {
         $token = $this->current();
@@ -68,6 +80,9 @@ class Lexer
         return $token;
     }
 
+    /**
+     * Assert the current token is of the expected type, consume it, or throw.
+     */
     public function expect(TokenType $type): Token
     {
         $token = $this->current();
@@ -82,16 +97,25 @@ class Lexer
         return $token;
     }
 
+    /**
+     * Check whether the current token matches the given type.
+     */
     public function is(TokenType $type): bool
     {
         return $this->current()->type === $type;
     }
 
+    /**
+     * Check whether the cursor has reached end of input.
+     */
     public function isEof(): bool
     {
         return $this->is(TokenType::Eof);
     }
 
+    /**
+     * Consume the current token if it matches the given type, otherwise return null.
+     */
     public function optionalConsume(TokenType $type): ?Token
     {
         if ($this->is($type)) {
@@ -106,16 +130,25 @@ class Lexer
         return $this->tokens;
     }
 
+    /**
+     * Return the current cursor position in the token list.
+     */
     public function getPosition(): int
     {
         return $this->cursor;
     }
 
+    /**
+     * Restore the cursor to a previously saved position.
+     */
     public function setPosition(int $position): void
     {
         $this->cursor = $position;
     }
 
+    /**
+     * Scan the entire input string and populate the token list.
+     */
     private function scan(): void
     {
         while ($this->pos < $this->length) {
@@ -172,6 +205,9 @@ class Lexer
         $this->tokens[] = new Token(TokenType::Eof, '', $this->length);
     }
 
+    /**
+     * Create a single-character token and advance the position.
+     */
     private function single(TokenType $type): Token
     {
         $token = new Token($type, $this->input[$this->pos], $this->pos);
@@ -179,6 +215,9 @@ class Lexer
         return $token;
     }
 
+    /**
+     * Skip over whitespace characters and percent-encoded whitespace (%20, %09).
+     */
     private function skipWhitespace(): void
     {
         while ($this->pos < $this->length) {
@@ -198,6 +237,9 @@ class Lexer
         }
     }
 
+    /**
+     * Read a single-quoted string literal, handling escaped quotes ('').
+     */
     private function readString(): Token
     {
         $start = $this->pos;
@@ -225,6 +267,9 @@ class Lexer
         throw new ParseException("Unterminated string literal starting at position {$start}", $start);
     }
 
+    /**
+     * Read a numeric literal (integer, decimal, or scientific notation), or delegate to GUID/date readers.
+     */
     private function readNumber(): Token
     {
         $start = $this->pos;
@@ -281,6 +326,9 @@ class Lexer
         );
     }
 
+    /**
+     * Read a minus operator, a negative number, or the -INF literal.
+     */
     private function readMinusOrNegativeNumber(): Token
     {
         $start = $this->pos;
@@ -305,6 +353,9 @@ class Lexer
         return $this->single(TokenType::Minus);
     }
 
+    /**
+     * Read an identifier or keyword token, including special literals (NaN, INF, duration, time-of-day).
+     */
     private function readIdentifierOrKeyword(): Token
     {
         $start = $this->pos;
@@ -339,6 +390,9 @@ class Lexer
         return new Token(TokenType::Identifier, $value, $start);
     }
 
+    /**
+     * Read a duration literal enclosed in single quotes (e.g. duration'P1DT2H').
+     */
     private function readDuration(int $start): Token
     {
         $this->pos++; // skip opening quote
@@ -358,6 +412,9 @@ class Lexer
         return new Token(TokenType::Duration, $value, $start);
     }
 
+    /**
+     * Read a time-of-day literal (HH:MM[:SS[.fractional]]).
+     */
     private function readTimeOfDay(int $start, string $hours): Token
     {
         $value = $hours;
@@ -385,6 +442,9 @@ class Lexer
         return new Token(TokenType::TimeOfDay, $value, $start);
     }
 
+    /**
+     * Read a date or DateTimeOffset literal starting from a four-digit year.
+     */
     private function readDateOrDateTimeOffset(int $start, string $year): Token
     {
         $value = $year;
@@ -437,6 +497,9 @@ class Lexer
         return new Token(TokenType::Date, $value, $start);
     }
 
+    /**
+     * Check whether the remaining input from the given position matches a GUID pattern.
+     */
     private function looksLikeGuid(int $start): bool
     {
         // GUID: 8HEXDIG-4HEXDIG-4HEXDIG-4HEXDIG-12HEXDIG
@@ -444,6 +507,9 @@ class Lexer
         return (bool) preg_match('/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/', $remaining);
     }
 
+    /**
+     * Read a GUID token in the 8-4-4-4-12 hex format.
+     */
     private function readGuid(int $start): Token
     {
         $this->pos = $start;
@@ -465,11 +531,17 @@ class Lexer
         return new Token(TokenType::Guid, $value, $start);
     }
 
+    /**
+     * Determine whether the given character is an ASCII digit.
+     */
     private function isDigit(string $char): bool
     {
         return $char >= '0' && $char <= '9';
     }
 
+    /**
+     * Determine whether the given character can start an identifier (letter or underscore).
+     */
     private function isIdentifierStart(string $char): bool
     {
         return ($char >= 'A' && $char <= 'Z')
@@ -477,11 +549,17 @@ class Lexer
             || $char === '_';
     }
 
+    /**
+     * Determine whether the given character can appear in an identifier body.
+     */
     private function isIdentifierChar(string $char): bool
     {
         return $this->isIdentifierStart($char) || $this->isDigit($char);
     }
 
+    /**
+     * Check whether the current position is a valid keyword boundary (not mid-identifier).
+     */
     private function isKeywordBoundary(): bool
     {
         if ($this->pos >= $this->length) {

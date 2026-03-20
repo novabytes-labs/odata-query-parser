@@ -37,6 +37,9 @@ class SelectParser
         return $items;
     }
 
+    /**
+     * Parse a single $select item (wildcard, property path, or path with nested options).
+     */
     private function parseSelectItem(): SelectItem
     {
         // Wildcard

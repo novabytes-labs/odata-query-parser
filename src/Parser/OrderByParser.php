@@ -38,6 +38,9 @@ class OrderByParser
         return $items;
     }
 
+    /**
+     * Parse a single $orderby item (expression with optional sort direction).
+     */
     private function parseOrderByItem(): OrderByItem
     {
         $filterParser = new FilterParser($this->lexer);

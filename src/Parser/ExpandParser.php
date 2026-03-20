@@ -37,6 +37,9 @@ class ExpandParser
         return $items;
     }
 
+    /**
+     * Parse a single $expand item (wildcard, navigation path, or path with nested options).
+     */
     private function parseExpandItem(): ExpandItem
     {
         // Wildcard

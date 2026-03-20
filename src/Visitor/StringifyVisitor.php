@@ -17,11 +17,17 @@ use NovaBytes\OData\AST\Filter\UnaryOperator;
 
 class StringifyVisitor implements ExpressionVisitor
 {
+    /**
+     * Convert an expression AST back to its OData string representation.
+     */
     public function stringify(Expression $expr): string
     {
         return (string) $this->visit($expr);
     }
 
+    /**
+     * Dispatch to the appropriate visit method based on the expression type.
+     */
     public function visit(Expression $expr): string
     {
         return match (true) {
@@ -36,6 +42,9 @@ class StringifyVisitor implements ExpressionVisitor
         };
     }
 
+    /**
+     * Stringify a binary expression (e.g. "Price gt 100").
+     */
     public function visitBinaryExpression(BinaryExpression $expr): string
     {
         $left = $this->visit($expr->left);
@@ -43,6 +52,9 @@ class StringifyVisitor implements ExpressionVisitor
         return "{$left} {$expr->operator->value} {$right}";
     }
 
+    /**
+     * Stringify a unary expression (not or negation).
+     */
     public function visitUnaryExpression(UnaryExpression $expr): string
     {
         $operand = $this->visit($expr->operand);
@@ -54,11 +66,17 @@ class StringifyVisitor implements ExpressionVisitor
         return "not {$operand}";
     }
 
+    /**
+     * Stringify a property path (e.g. "Address/City").
+     */
     public function visitPropertyPath(PropertyPath $expr): string
     {
         return (string) $expr;
     }
 
+    /**
+     * Stringify a literal value according to its OData type.
+     */
     public function visitLiteral(Literal $expr): string
     {
         return match ($expr->type) {
@@ -75,12 +93,18 @@ class StringifyVisitor implements ExpressionVisitor
         };
     }
 
+    /**
+     * Stringify a function call (e.g. "contains(Name,'value')").
+     */
     public function visitFunctionCall(FunctionCall $expr): string
     {
         $args = array_map(fn(Expression $arg) => $this->visit($arg), $expr->arguments);
         return $expr->name . '(' . implode(',', $args) . ')';
     }
 
+    /**
+     * Stringify a lambda expression (e.g. "Items/any(i:i/Price gt 100)").
+     */
     public function visitLambdaExpression(LambdaExpression $expr): string
     {
         $collection = $this->visit($expr->collection);
@@ -93,12 +117,18 @@ class StringifyVisitor implements ExpressionVisitor
         return "{$collection}/{$expr->operator->value}({$expr->variable}:{$predicate})";
     }
 
+    /**
+     * Stringify a list expression (e.g. "(1,2,3)").
+     */
     public function visitListExpression(ListExpression $expr): string
     {
         $items = array_map(fn(Expression $item) => $this->visit($item), $expr->items);
         return '(' . implode(',', $items) . ')';
     }
 
+    /**
+     * Format a decimal value, handling NaN, INF, and -INF special cases.
+     */
     private function formatDecimal(mixed $value): string
     {
         if (is_float($value)) {
