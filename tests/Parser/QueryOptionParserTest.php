@@ -229,6 +229,33 @@ class QueryOptionParserTest extends TestCase
     // ── Complex real-world queries ───────────────────────────────────
 
     #[Test]
+    public function it_throws_on_invalid_skip(): void
+    {
+        $this->expectException(ParseException::class);
+        QueryOptionParser::parse('$skip=abc');
+    }
+
+    #[Test]
+    public function it_decodes_percent_encoded_filter(): void
+    {
+        // %20 is decoded to space; %27 is preserved (single quote handled by lexer)
+        $result = QueryOptionParser::parse('$filter=Price%20gt%20100');
+
+        $this->assertNotNull($result->filter);
+        $this->assertInstanceOf(BinaryExpression::class, $result->filter);
+    }
+
+    #[Test]
+    public function it_handles_pair_without_equals_sign(): void
+    {
+        // A pair without '=' should not throw, just be treated as key with empty value
+        $result = QueryOptionParser::parse('orphanedKey');
+
+        // Unknown options are silently ignored
+        $this->assertNull($result->filter);
+    }
+
+    #[Test]
     public function it_parses_realistic_query(): void
     {
         $query = '$filter=contains(Name,\'Widget\') and Price gt 5.00'

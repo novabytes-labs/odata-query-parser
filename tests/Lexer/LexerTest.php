@@ -244,4 +244,146 @@ class LexerTest extends TestCase
         $lexer->advance();
         $this->assertSame(5, $lexer->current()->position);
     }
+
+    // ── peek() ──────────────────────────────────────────────────────
+
+    #[Test]
+    public function it_peeks_ahead_without_advancing(): void
+    {
+        $lexer = new Lexer('A eq 1');
+
+        $peeked = $lexer->peek();
+        $this->assertSame(TokenType::Eq, $peeked->type);
+        // Current should still be 'A'
+        $this->assertSame(TokenType::Identifier, $lexer->current()->type);
+        $this->assertSame('A', $lexer->current()->value);
+    }
+
+    #[Test]
+    public function it_peeks_beyond_token_list_returns_eof(): void
+    {
+        $lexer = new Lexer('A');
+
+        $peeked = $lexer->peek(999);
+        $this->assertSame(TokenType::Eof, $peeked->type);
+    }
+
+    // ── optionalConsume() ───────────────────────────────────────────
+
+    #[Test]
+    public function it_optionally_consumes_matching_token(): void
+    {
+        $lexer = new Lexer('A eq 1');
+
+        $token = $lexer->optionalConsume(TokenType::Identifier);
+        $this->assertNotNull($token);
+        $this->assertSame('A', $token->value);
+        // Cursor should have advanced to 'eq'
+        $this->assertSame(TokenType::Eq, $lexer->current()->type);
+    }
+
+    #[Test]
+    public function it_optionally_consumes_returns_null_on_mismatch(): void
+    {
+        $lexer = new Lexer('A eq 1');
+
+        $token = $lexer->optionalConsume(TokenType::String);
+        $this->assertNull($token);
+        // Cursor should not have advanced
+        $this->assertSame(TokenType::Identifier, $lexer->current()->type);
+    }
+
+    // ── getPosition() / setPosition() ───────────────────────────────
+
+    #[Test]
+    public function it_saves_and_restores_position(): void
+    {
+        $lexer = new Lexer('A eq 1');
+
+        $saved = $lexer->getPosition();
+        $this->assertSame(0, $saved);
+
+        $lexer->advance(); // move to 'eq'
+        $lexer->advance(); // move to '1'
+        $this->assertSame(TokenType::Integer, $lexer->current()->type);
+
+        $lexer->setPosition($saved);
+        $this->assertSame(TokenType::Identifier, $lexer->current()->type);
+        $this->assertSame('A', $lexer->current()->value);
+    }
+
+    // ── Percent-encoded whitespace ──────────────────────────────────
+
+    #[Test]
+    public function it_handles_percent_encoded_whitespace(): void
+    {
+        $lexer = new Lexer('Price%20gt%20100');
+
+        $this->assertSame(TokenType::Identifier, $lexer->current()->type);
+        $this->assertSame('Price', $lexer->current()->value);
+
+        $lexer->advance();
+        $this->assertSame(TokenType::Gt, $lexer->current()->type);
+
+        $lexer->advance();
+        $this->assertSame(TokenType::Integer, $lexer->current()->type);
+        $this->assertSame('100', $lexer->current()->value);
+    }
+
+    #[Test]
+    public function it_handles_percent_encoded_tab(): void
+    {
+        $lexer = new Lexer('A%09eq%091');
+
+        $this->assertSame(TokenType::Identifier, $lexer->current()->type);
+        $this->assertSame('A', $lexer->current()->value);
+
+        $lexer->advance();
+        $this->assertSame(TokenType::Eq, $lexer->current()->type);
+
+        $lexer->advance();
+        $this->assertSame(TokenType::Integer, $lexer->current()->type);
+    }
+
+    // ── Unterminated duration ───────────────────────────────────────
+
+    #[Test]
+    public function it_throws_on_unterminated_duration(): void
+    {
+        $this->expectException(ParseException::class);
+        $this->expectExceptionMessage('Unterminated duration');
+        new Lexer("duration'P1DT2H");
+    }
+
+    // ── Scientific notation with sign ───────────────────────────────
+
+    #[Test]
+    public function it_tokenizes_scientific_notation_with_positive_sign(): void
+    {
+        $lexer = new Lexer('1.5e+10');
+
+        $this->assertSame(TokenType::Decimal, $lexer->current()->type);
+        $this->assertSame('1.5e+10', $lexer->current()->value);
+    }
+
+    #[Test]
+    public function it_tokenizes_scientific_notation_with_negative_sign(): void
+    {
+        $lexer = new Lexer('1.5e-10');
+
+        $this->assertSame(TokenType::Decimal, $lexer->current()->type);
+        $this->assertSame('1.5e-10', $lexer->current()->value);
+    }
+
+    // ── Minus as operator ───────────────────────────────────────────
+
+    #[Test]
+    public function it_tokenizes_minus_as_operator(): void
+    {
+        $lexer = new Lexer('A - B');
+
+        $lexer->advance(); // skip A
+        $this->assertSame(TokenType::Minus, $lexer->current()->type);
+        $this->assertSame('-', $lexer->current()->value);
+    }
 }

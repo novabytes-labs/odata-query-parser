@@ -468,4 +468,140 @@ class FilterParserTest extends TestCase
         $this->expectException(ParseException::class);
         FilterParser::parse('Name eq 1 2');
     }
+
+    // ── Additional comparison operators ─────────────────────────────
+
+    #[Test]
+    public function it_parses_has_operator(): void
+    {
+        $expr = FilterParser::parse("Style has 'Yellow'");
+
+        $this->assertInstanceOf(BinaryExpression::class, $expr);
+        $this->assertSame(BinaryOperator::Has, $expr->operator);
+    }
+
+    // ── Additional arithmetic operators ─────────────────────────────
+
+    #[Test]
+    public function it_parses_sub_operator(): void
+    {
+        $expr = FilterParser::parse('Price sub 5 gt 0');
+
+        $this->assertInstanceOf(BinaryExpression::class, $expr);
+        $this->assertSame(BinaryOperator::Gt, $expr->operator);
+        $this->assertInstanceOf(BinaryExpression::class, $expr->left);
+        $this->assertSame(BinaryOperator::Sub, $expr->left->operator);
+    }
+
+    #[Test]
+    public function it_parses_div_operator(): void
+    {
+        $expr = FilterParser::parse('Price div 2 eq 5');
+
+        $this->assertInstanceOf(BinaryExpression::class, $expr);
+        $this->assertInstanceOf(BinaryExpression::class, $expr->left);
+        $this->assertSame(BinaryOperator::Div, $expr->left->operator);
+    }
+
+    #[Test]
+    public function it_parses_divby_operator(): void
+    {
+        $expr = FilterParser::parse('Price divby 2 gt 5');
+
+        $this->assertInstanceOf(BinaryExpression::class, $expr);
+        $this->assertInstanceOf(BinaryExpression::class, $expr->left);
+        $this->assertSame(BinaryOperator::DivBy, $expr->left->operator);
+    }
+
+    #[Test]
+    public function it_parses_mod_operator(): void
+    {
+        $expr = FilterParser::parse('Price mod 2 eq 0');
+
+        $this->assertInstanceOf(BinaryExpression::class, $expr);
+        $this->assertInstanceOf(BinaryExpression::class, $expr->left);
+        $this->assertSame(BinaryOperator::Mod, $expr->left->operator);
+    }
+
+    // ── Additional literal types ────────────────────────────────────
+
+    #[Test]
+    public function it_parses_duration_literal(): void
+    {
+        $expr = FilterParser::parse("Duration eq duration'P1DT2H30M'");
+
+        $this->assertInstanceOf(BinaryExpression::class, $expr);
+        $this->assertInstanceOf(Literal::class, $expr->right);
+        $this->assertSame(LiteralType::Duration, $expr->right->type);
+        $this->assertSame('P1DT2H30M', $expr->right->value);
+    }
+
+    #[Test]
+    public function it_parses_negative_decimal(): void
+    {
+        $expr = FilterParser::parse('Price eq -3.14');
+
+        $this->assertInstanceOf(BinaryExpression::class, $expr);
+        $this->assertInstanceOf(Literal::class, $expr->right);
+        $this->assertSame(-3.14, $expr->right->value);
+        $this->assertSame(LiteralType::Decimal, $expr->right->type);
+    }
+
+    #[Test]
+    public function it_parses_scientific_notation_in_filter(): void
+    {
+        $expr = FilterParser::parse('Value eq 1.5e10');
+
+        $this->assertInstanceOf(BinaryExpression::class, $expr);
+        $this->assertInstanceOf(Literal::class, $expr->right);
+        $this->assertSame(LiteralType::Decimal, $expr->right->type);
+        $this->assertSame(1.5e10, $expr->right->value);
+    }
+
+    // ── Additional functions ────────────────────────────────────────
+
+    #[Test]
+    public function it_parses_matchesPattern_function(): void
+    {
+        $expr = FilterParser::parse("matchesPattern(Name,'^A')");
+
+        $this->assertInstanceOf(FunctionCall::class, $expr);
+        $this->assertSame('matchesPattern', $expr->name);
+        $this->assertCount(2, $expr->arguments);
+    }
+
+    #[Test]
+    public function it_parses_nested_function_calls(): void
+    {
+        $expr = FilterParser::parse("contains(tolower(Name),'milk')");
+
+        $this->assertInstanceOf(FunctionCall::class, $expr);
+        $this->assertSame('contains', $expr->name);
+        $this->assertCount(2, $expr->arguments);
+        $this->assertInstanceOf(FunctionCall::class, $expr->arguments[0]);
+        $this->assertSame('tolower', $expr->arguments[0]->name);
+    }
+
+    #[Test]
+    public function it_parses_boolean_false_literal(): void
+    {
+        $expr = FilterParser::parse('IsActive eq false');
+
+        $this->assertInstanceOf(BinaryExpression::class, $expr);
+        $this->assertInstanceOf(Literal::class, $expr->right);
+        $this->assertFalse($expr->right->value);
+        $this->assertSame(LiteralType::Boolean, $expr->right->type);
+    }
+
+    // ── Unary minus on expression ───────────────────────────────────
+
+    #[Test]
+    public function it_parses_unary_minus_on_expression(): void
+    {
+        $expr = FilterParser::parse('-Price gt 0');
+
+        $this->assertInstanceOf(BinaryExpression::class, $expr);
+        $this->assertInstanceOf(UnaryExpression::class, $expr->left);
+        $this->assertSame(UnaryOperator::Negate, $expr->left->operator);
+    }
 }
