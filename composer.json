@@ -1,0 +1,31 @@
+{
+    "name": "novabytes/odata-query-parser",
+    "description": "Framework-agnostic OData 4 query string parser for PHP. Parses $filter, $select, $expand, $orderby, and more into AST objects.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "odata",
+        "parser",
+        "query",
+        "filter",
+        "ast",
+        "rest",
+        "api"
+    ],
+    "require": {
+        "php": "^8.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "NovaBytes\\OData\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "NovaBytes\\OData\\Tests\\": "tests/"
+        }
+    }
+}
