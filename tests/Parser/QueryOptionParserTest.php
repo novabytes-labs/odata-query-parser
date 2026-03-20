@@ -6,8 +6,6 @@ namespace NovaBytes\OData\Tests\Parser;
 
 use NovaBytes\OData\AST\Filter\BinaryExpression;
 use NovaBytes\OData\AST\Filter\BinaryOperator;
-use NovaBytes\OData\AST\Filter\FunctionCall;
-use NovaBytes\OData\AST\Filter\Literal;
 use NovaBytes\OData\AST\Filter\PropertyPath;
 use NovaBytes\OData\AST\OrderBy\SortDirection;
 use NovaBytes\OData\Exception\ParseException;

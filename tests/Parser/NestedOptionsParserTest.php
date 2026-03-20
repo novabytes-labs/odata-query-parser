@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace NovaBytes\OData\Tests\Parser;
 
 use NovaBytes\OData\AST\Filter\BinaryExpression;
-use NovaBytes\OData\AST\Filter\PropertyPath;
 use NovaBytes\OData\AST\OrderBy\SortDirection;
 use NovaBytes\OData\Exception\ParseException;
 use NovaBytes\OData\Lexer\Lexer;

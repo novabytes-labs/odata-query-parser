@@ -7,7 +7,6 @@ namespace NovaBytes\OData\Tests\Lexer;
 use NovaBytes\OData\Exception\ParseException;
 use NovaBytes\OData\Lexer\Lexer;
 use NovaBytes\OData\Lexer\TokenType;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

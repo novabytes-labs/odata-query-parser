@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace NovaBytes\OData\Parser;
 
-use NovaBytes\OData\AST\Expression;
 use NovaBytes\OData\AST\Expand\ExpandItem;
 use NovaBytes\OData\AST\OrderBy\OrderByItem;
 use NovaBytes\OData\AST\QueryOptions;

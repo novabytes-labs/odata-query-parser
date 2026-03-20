@@ -17,7 +17,7 @@ enum TokenType: string
     case At = '@';
     case Equals = '=';
 
-        // Literals
+    // Literals
     case Integer = 'INTEGER';
     case Decimal = 'DECIMAL';
     case String = 'STRING';
@@ -27,13 +27,13 @@ enum TokenType: string
     case TimeOfDay = 'TIMEOFDAY';
     case Duration = 'DURATION';
 
-        // Identifiers and keywords
+    // Identifiers and keywords
     case Identifier = 'IDENTIFIER';
     case Null = 'null';
     case True = 'true';
     case False = 'false';
 
-        // Comparison operators
+    // Comparison operators
     case Eq = 'eq';
     case Ne = 'ne';
     case Gt = 'gt';
@@ -43,12 +43,12 @@ enum TokenType: string
     case In = 'in';
     case Has = 'has';
 
-        // Logical operators
+    // Logical operators
     case And = 'and';
     case Or = 'or';
     case Not = 'not';
 
-        // Arithmetic operators
+    // Arithmetic operators
     case Add = 'add';
     case Sub = 'sub';
     case Mul = 'mul';
@@ -56,18 +56,18 @@ enum TokenType: string
     case DivBy = 'divby';
     case Mod = 'mod';
 
-        // Sort direction
+    // Sort direction
     case Asc = 'asc';
     case Desc = 'desc';
 
-        // Lambda
+    // Lambda
     case Any = 'any';
     case All = 'all';
 
-        // Negation (unary minus)
+    // Negation (unary minus)
     case Minus = '-';
 
-        // Special
+    // Special
     case Dot = '.';
     case Eof = 'EOF';
 }

@@ -109,7 +109,7 @@ class StringifyVisitor implements ExpressionVisitor
     {
         $collection = $this->visit($expr->collection);
 
-        if ($expr->variable === null) {
+        if ($expr->variable === null || $expr->predicate === null) {
             return "{$collection}/{$expr->operator->value}()";
         }
 

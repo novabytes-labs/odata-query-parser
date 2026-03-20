@@ -16,11 +16,11 @@ enum BinaryOperator: string
     case In = 'in';
     case Has = 'has';
 
-        // Logical
+    // Logical
     case And = 'and';
     case Or = 'or';
 
-        // Arithmetic
+    // Arithmetic
     case Add = 'add';
     case Sub = 'sub';
     case Mul = 'mul';

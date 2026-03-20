@@ -99,6 +99,8 @@ class Lexer
 
     /**
      * Check whether the current token matches the given type.
+     *
+     * @phpstan-impure
      */
     public function is(TokenType $type): bool
     {
