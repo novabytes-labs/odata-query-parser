@@ -165,7 +165,9 @@ class QueryOptionParser
                 // Don't decode characters that would break parsing:
                 // %26 (&), %3D (=), %27 (')
                 if ($upper !== '26' && $upper !== '3D' && $upper !== '27') {
-                    $result .= chr((int) hexdec($hex));
+                    /** @var int<0, 255> $codepoint */
+                    $codepoint = (int) hexdec($hex);
+                    $result .= chr($codepoint);
                     $i += 2;
                 } else {
                     $result .= $input[$i];
