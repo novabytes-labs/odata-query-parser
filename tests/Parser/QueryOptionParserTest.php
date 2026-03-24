@@ -254,6 +254,35 @@ class QueryOptionParserTest extends TestCase
     }
 
     #[Test]
+    public function it_preserves_percent_encoded_ampersand_in_filter(): void
+    {
+        // %26 is '&' — should NOT be decoded, so it stays as %26 in the value
+        // This tests the else branch in percentDecode where protected chars are preserved
+        $result = QueryOptionParser::parse('$filter=Name eq \'A%26B\'');
+
+        $this->assertNotNull($result->filter);
+        $this->assertInstanceOf(BinaryExpression::class, $result->filter);
+    }
+
+    #[Test]
+    public function it_preserves_percent_encoded_equals_in_filter(): void
+    {
+        // %3D is '=' — should NOT be decoded to prevent breaking key=value splitting
+        $result = QueryOptionParser::parse('$filter=Name eq \'A%3DB\'');
+
+        $this->assertNotNull($result->filter);
+    }
+
+    #[Test]
+    public function it_preserves_percent_encoded_single_quote(): void
+    {
+        // %27 is "'" — should NOT be decoded (the lexer handles quote parsing)
+        $result = QueryOptionParser::parse('$filter=Name eq \'A%27B\'');
+
+        $this->assertNotNull($result->filter);
+    }
+
+    #[Test]
     public function it_parses_realistic_query(): void
     {
         $query = '$filter=contains(Name,\'Widget\') and Price gt 5.00'
