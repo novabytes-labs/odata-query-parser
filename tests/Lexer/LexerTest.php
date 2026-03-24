@@ -385,4 +385,85 @@ class LexerTest extends TestCase
         $this->assertSame(TokenType::Minus, $lexer->current()->type);
         $this->assertSame('-', $lexer->current()->value);
     }
+
+    // ── expect() error path ───────────────────────────────────────────
+
+    #[Test]
+    public function it_throws_on_expect_type_mismatch(): void
+    {
+        $lexer = new Lexer('A eq 1');
+
+        $this->expectException(ParseException::class);
+        $this->expectExceptionMessage('expected INTEGER');
+        $lexer->expect(TokenType::Integer);
+    }
+
+    #[Test]
+    public function it_throws_on_expect_at_eof(): void
+    {
+        $lexer = new Lexer('A');
+
+        $lexer->advance(); // consume A, now at EOF
+        $this->expectException(ParseException::class);
+        $this->expectExceptionMessage('end of input');
+        $lexer->expect(TokenType::Identifier);
+    }
+
+    // ── Trailing whitespace (scan break path) ─────────────────────────
+
+    #[Test]
+    public function it_handles_trailing_whitespace(): void
+    {
+        $lexer = new Lexer('A  ');
+
+        $this->assertSame(TokenType::Identifier, $lexer->current()->type);
+        $this->assertSame('A', $lexer->current()->value);
+        $lexer->advance();
+        $this->assertTrue($lexer->isEof());
+    }
+
+    // ── @ token ───────────────────────────────────────────────────────
+
+    #[Test]
+    public function it_tokenizes_at_sign(): void
+    {
+        $lexer = new Lexer('@param');
+
+        $this->assertSame(TokenType::At, $lexer->current()->type);
+        $this->assertSame('@', $lexer->current()->value);
+        $lexer->advance();
+        $this->assertSame(TokenType::Identifier, $lexer->current()->type);
+        $this->assertSame('param', $lexer->current()->value);
+    }
+
+    // ── Non-whitespace percent-encoded sequence ───────────────────────
+
+    #[Test]
+    public function it_stops_skipping_whitespace_at_non_whitespace_percent_encoded(): void
+    {
+        // %28 is '(' percent-encoded — skipWhitespace encounters '%' but it's
+        // not %20 or %09, so it hits the break. Then '%' is unexpected char.
+        $this->expectException(ParseException::class);
+        new Lexer('A %28');
+    }
+
+    // ── DateTimeOffset with timezone offset ───────────────────────────
+
+    #[Test]
+    public function it_tokenizes_datetimeoffset_with_positive_offset(): void
+    {
+        $lexer = new Lexer('2023-01-15T14:30:00+05:30');
+
+        $this->assertSame(TokenType::DateTimeOffset, $lexer->current()->type);
+        $this->assertSame('2023-01-15T14:30:00+05:30', $lexer->current()->value);
+    }
+
+    #[Test]
+    public function it_tokenizes_datetimeoffset_with_negative_offset(): void
+    {
+        $lexer = new Lexer('2023-01-15T14:30:00-08:00');
+
+        $this->assertSame(TokenType::DateTimeOffset, $lexer->current()->type);
+        $this->assertSame('2023-01-15T14:30:00-08:00', $lexer->current()->value);
+    }
 }

@@ -604,4 +604,76 @@ class FilterParserTest extends TestCase
         $this->assertInstanceOf(UnaryExpression::class, $expr->left);
         $this->assertSame(UnaryOperator::Negate, $expr->left->operator);
     }
+
+    // ── Special decimal values (NaN, INF, -INF) ────────────────────────
+
+    #[Test]
+    public function it_parses_nan_literal(): void
+    {
+        $expr = FilterParser::parse('Value eq NaN');
+
+        $this->assertInstanceOf(BinaryExpression::class, $expr);
+        $this->assertInstanceOf(Literal::class, $expr->right);
+        $this->assertSame(LiteralType::Decimal, $expr->right->type);
+        $this->assertNan($expr->right->value);
+    }
+
+    #[Test]
+    public function it_parses_inf_literal(): void
+    {
+        $expr = FilterParser::parse('Value eq INF');
+
+        $this->assertInstanceOf(BinaryExpression::class, $expr);
+        $this->assertInstanceOf(Literal::class, $expr->right);
+        $this->assertSame(LiteralType::Decimal, $expr->right->type);
+        $this->assertSame(INF, $expr->right->value);
+    }
+
+    #[Test]
+    public function it_parses_negative_inf_literal(): void
+    {
+        $expr = FilterParser::parse('Value eq -INF');
+
+        $this->assertInstanceOf(BinaryExpression::class, $expr);
+        $this->assertInstanceOf(Literal::class, $expr->right);
+        $this->assertSame(LiteralType::Decimal, $expr->right->type);
+        $this->assertSame(-INF, $expr->right->value);
+    }
+
+    // ── Path-based function calls ───────────────────────────────────────
+
+    #[Test]
+    public function it_parses_function_call_on_property_path(): void
+    {
+        $expr = FilterParser::parse('Items/length() gt 0');
+
+        $this->assertInstanceOf(BinaryExpression::class, $expr);
+        $this->assertInstanceOf(FunctionCall::class, $expr->left);
+        $this->assertSame('length', $expr->left->name);
+        $this->assertCount(1, $expr->left->arguments);
+        $this->assertInstanceOf(PropertyPath::class, $expr->left->arguments[0]);
+        $this->assertSame(['Items'], $expr->left->arguments[0]->segments);
+    }
+
+    #[Test]
+    public function it_parses_function_call_on_property_path_with_args(): void
+    {
+        $expr = FilterParser::parse("Items/contains(Name,'test')");
+
+        $this->assertInstanceOf(FunctionCall::class, $expr);
+        $this->assertSame('contains', $expr->name);
+        $this->assertCount(3, $expr->arguments);
+        $this->assertInstanceOf(PropertyPath::class, $expr->arguments[0]);
+        $this->assertSame(['Items'], $expr->arguments[0]->segments);
+    }
+
+    // ── Unexpected token after slash ────────────────────────────────────
+
+    #[Test]
+    public function it_throws_on_unexpected_token_after_slash(): void
+    {
+        $this->expectException(ParseException::class);
+        $this->expectExceptionMessage('identifier');
+        FilterParser::parse('Items/123');
+    }
 }
