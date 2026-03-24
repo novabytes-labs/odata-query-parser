@@ -324,6 +324,74 @@ try {
 | Enum | `Namespace.Color'Red'` | Not yet |
 | Geography/Geometry | `geography'SRID=0;Point(...)'` | Not yet |
 
+## Metadata
+
+Generate OData metadata documents and OpenAPI specifications from entity type definitions.
+
+### Entity Types
+
+Define your entity types using the metadata value objects:
+
+```php
+use NovaBytes\OData\Metadata\EntityType;
+use NovaBytes\OData\Metadata\PropertyMetadata;
+use NovaBytes\OData\Metadata\NavigationPropertyMetadata;
+
+$product = new EntityType(
+    name: 'Product',
+    entitySetName: 'Products',
+    keyProperty: 'Id',
+    properties: [
+        new PropertyMetadata('Id', 'Edm.Int64', nullable: false, filterable: true, sortable: true, selectable: true),
+        new PropertyMetadata('Name', 'Edm.String', nullable: false, filterable: true, sortable: true, selectable: true),
+        new PropertyMetadata('Price', 'Edm.Decimal', nullable: false, filterable: true, sortable: true, selectable: true),
+    ],
+    navigationProperties: [
+        new NavigationPropertyMetadata('Category', 'Category', isCollection: false),
+        new NavigationPropertyMetadata('Reviews', 'Review', isCollection: true),
+    ],
+);
+```
+
+### EDM Type Resolver
+
+Map database column types to OData EDM types:
+
+```php
+use NovaBytes\OData\Metadata\EdmTypeResolver;
+
+EdmTypeResolver::resolve('integer');   // 'Edm.Int32'
+EdmTypeResolver::resolve('varchar');   // 'Edm.String'
+EdmTypeResolver::resolve('timestamp'); // 'Edm.DateTimeOffset'
+EdmTypeResolver::resolve('boolean');   // 'Edm.Boolean'
+```
+
+### CSDL Generation
+
+Generate an OData v4 CSDL XML metadata document:
+
+```php
+use NovaBytes\OData\Metadata\CsdlGenerator;
+
+$xml = CsdlGenerator::generate('MyApp', [$product, $category]);
+// Returns valid OData v4 CSDL XML
+```
+
+### OpenAPI Generation
+
+Generate an OpenAPI 3.0 specification:
+
+```php
+use NovaBytes\OData\Metadata\OpenApiGenerator;
+
+$spec = OpenApiGenerator::generate([$product, $category], [
+    'title' => 'My OData API',
+    'version' => '1.0.0',
+]);
+// Returns a PHP array representing the OpenAPI spec
+echo json_encode($spec, JSON_PRETTY_PRINT);
+```
+
 ## Design Decisions
 
 - **Framework-agnostic** -- zero dependencies, works with any PHP 8.2+ project. Use it with Laravel, Symfony, API Platform, Slim, or plain PHP.
