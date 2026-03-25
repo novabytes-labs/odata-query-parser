@@ -16,6 +16,8 @@ readonly class PropertyMetadata
      * @param bool $filterable Whether the property can be used in $filter.
      * @param bool $sortable Whether the property can be used in $orderby.
      * @param bool $selectable Whether the property can be used in $select.
+     * @param bool $creatable Whether the property can be set during entity creation (POST).
+     * @param bool $updatable Whether the property can be modified during entity update (PUT/PATCH).
      */
     public function __construct(
         public string $name,
@@ -24,5 +26,7 @@ readonly class PropertyMetadata
         public bool $filterable = false,
         public bool $sortable = false,
         public bool $selectable = false,
+        public bool $creatable = false,
+        public bool $updatable = false,
     ) {}
 }

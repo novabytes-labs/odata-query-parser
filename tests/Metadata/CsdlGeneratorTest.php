@@ -128,4 +128,95 @@ class CsdlGeneratorTest extends TestCase
 
         $this->assertStringContainsString('PropertyRef Name="ProductId"', $xml);
     }
+
+    #[Test]
+    public function it_includes_capability_annotations_for_crud_operations(): void
+    {
+        $entityTypes = [
+            new EntityType(
+                name: 'Product',
+                entitySetName: 'Products',
+                keyProperty: 'Id',
+                properties: [
+                    new PropertyMetadata('Id', 'Edm.Int64', nullable: false),
+                ],
+                operations: ['read', 'create', 'update', 'delete'],
+            ),
+        ];
+
+        $xml = CsdlGenerator::generate('Default', $entityTypes);
+
+        $doc = new \DOMDocument();
+        $this->assertTrue($doc->loadXML($xml), 'Generated CSDL is not valid XML.');
+
+        $this->assertStringContainsString('Org.OData.Capabilities.V1.InsertRestrictions', $xml);
+        $this->assertStringContainsString('Org.OData.Capabilities.V1.UpdateRestrictions', $xml);
+        $this->assertStringContainsString('Org.OData.Capabilities.V1.DeleteRestrictions', $xml);
+    }
+
+    #[Test]
+    public function it_includes_capabilities_reference_when_crud_operations_exist(): void
+    {
+        $entityTypes = [
+            new EntityType(
+                name: 'Product',
+                entitySetName: 'Products',
+                keyProperty: 'Id',
+                properties: [
+                    new PropertyMetadata('Id', 'Edm.Int64', nullable: false),
+                ],
+                operations: ['read', 'create'],
+            ),
+        ];
+
+        $xml = CsdlGenerator::generate('Default', $entityTypes);
+
+        $this->assertStringContainsString('edmx:Reference', $xml);
+        $this->assertStringContainsString('Org.OData.Capabilities.V1', $xml);
+    }
+
+    #[Test]
+    public function it_omits_capabilities_reference_when_only_read(): void
+    {
+        $entityTypes = [
+            new EntityType(
+                name: 'Product',
+                entitySetName: 'Products',
+                keyProperty: 'Id',
+                properties: [
+                    new PropertyMetadata('Id', 'Edm.Int64', nullable: false),
+                ],
+                operations: ['read'],
+            ),
+        ];
+
+        $xml = CsdlGenerator::generate('Default', $entityTypes);
+
+        $this->assertStringNotContainsString('edmx:Reference', $xml);
+        $this->assertStringNotContainsString('InsertRestrictions', $xml);
+    }
+
+    #[Test]
+    public function it_writes_correct_boolean_values_for_restrictions(): void
+    {
+        $entityTypes = [
+            new EntityType(
+                name: 'Product',
+                entitySetName: 'Products',
+                keyProperty: 'Id',
+                properties: [
+                    new PropertyMetadata('Id', 'Edm.Int64', nullable: false),
+                ],
+                operations: ['read', 'create'],
+            ),
+        ];
+
+        $xml = CsdlGenerator::generate('Default', $entityTypes);
+
+        // Create is allowed
+        $this->assertStringContainsString('Property="Insertable" Bool="true"', $xml);
+        // Update and delete are not allowed
+        $this->assertStringContainsString('Property="Updatable" Bool="false"', $xml);
+        $this->assertStringContainsString('Property="Deletable" Bool="false"', $xml);
+    }
 }

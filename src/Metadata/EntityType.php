@@ -15,6 +15,7 @@ readonly class EntityType
      * @param string $keyProperty Primary key property name in PascalCase (e.g., "Id").
      * @param list<PropertyMetadata> $properties Structural properties.
      * @param list<NavigationPropertyMetadata> $navigationProperties Navigation properties.
+     * @param list<string> $operations Allowed CRUD operations: 'read', 'create', 'update', 'delete'.
      */
     public function __construct(
         public string $name,
@@ -22,5 +23,6 @@ readonly class EntityType
         public string $keyProperty,
         public array $properties,
         public array $navigationProperties = [],
+        public array $operations = ['read'],
     ) {}
 }
