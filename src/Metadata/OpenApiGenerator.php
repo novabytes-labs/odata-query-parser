@@ -55,25 +55,52 @@ class OpenApiGenerator
         }
 
         foreach ($entityTypes as $entityType) {
-            $path = $routePrefix !== '' ? "/{$routePrefix}/{$entityType->entitySetName}" : "/{$entityType->entitySetName}";
-            $spec['paths'][$path] = self::buildPathItem($entityType);
+            $basePath = $routePrefix !== '' ? "/{$routePrefix}/{$entityType->entitySetName}" : "/{$entityType->entitySetName}";
+
+            $spec['paths'][$basePath] = self::buildCollectionPathItem($entityType);
+
+            $singlePath = "{$basePath}({{$entityType->keyProperty}})";
+            $singlePathItem = self::buildSingleEntityPathItem($entityType);
+
+            if ($singlePathItem !== []) {
+                $spec['paths'][$singlePath] = $singlePathItem;
+            }
+
             $spec['components']['schemas'][$entityType->name] = self::buildSchema($entityType);
+
+            if (self::supportsOperation($entityType, 'create')) {
+                $createSchema = self::buildCreateSchema($entityType);
+
+                if ($createSchema !== null) {
+                    $spec['components']['schemas']["{$entityType->name}Create"] = $createSchema;
+                }
+            }
+
+            if (self::supportsOperation($entityType, 'update')) {
+                $updateSchema = self::buildUpdateSchema($entityType);
+
+                if ($updateSchema !== null) {
+                    $spec['components']['schemas']["{$entityType->name}Update"] = $updateSchema;
+                }
+            }
         }
 
         return $spec;
     }
 
     /**
-     * Build the OpenAPI path item for an entity set.
+     * Build the OpenAPI path item for an entity set collection endpoint.
      *
      * @return array<string, mixed>
      */
-    private static function buildPathItem(EntityType $entityType): array
+    private static function buildCollectionPathItem(EntityType $entityType): array
     {
-        $parameters = self::buildQueryParameters($entityType);
+        $pathItem = [];
 
-        return [
-            'get' => [
+        if (self::supportsOperation($entityType, 'read')) {
+            $parameters = self::buildQueryParameters($entityType);
+
+            $pathItem['get'] = [
                 'summary' => "Get {$entityType->entitySetName}",
                 'operationId' => "get{$entityType->entitySetName}",
                 'parameters' => $parameters,
@@ -97,7 +124,259 @@ class OpenApiGenerator
                         ],
                     ],
                 ],
-            ],
+            ];
+        }
+
+        if (self::supportsOperation($entityType, 'create')) {
+            $creatableProperties = self::getPropertyNamesByCapability($entityType, 'creatable');
+            $schemaRef = $creatableProperties !== []
+                ? ['$ref' => "#/components/schemas/{$entityType->name}Create"]
+                : ['$ref' => "#/components/schemas/{$entityType->name}"];
+
+            $pathItem['post'] = [
+                'summary' => "Create a new {$entityType->name}",
+                'operationId' => "create{$entityType->name}",
+                'requestBody' => [
+                    'required' => true,
+                    'content' => [
+                        'application/json' => [
+                            'schema' => $schemaRef,
+                        ],
+                    ],
+                ],
+                'responses' => [
+                    '201' => [
+                        'description' => "The created {$entityType->name} entity.",
+                        'content' => [
+                            'application/json' => [
+                                'schema' => [
+                                    '$ref' => "#/components/schemas/{$entityType->name}",
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ];
+        }
+
+        return $pathItem;
+    }
+
+    /**
+     * Build the OpenAPI path item for a single entity endpoint.
+     *
+     * @return array<string, mixed>
+     */
+    private static function buildSingleEntityPathItem(EntityType $entityType): array
+    {
+        $pathItem = [];
+        $keyParameter = self::buildKeyParameter($entityType);
+
+        if (self::supportsOperation($entityType, 'read')) {
+            $pathItem['get'] = [
+                'summary' => "Get a {$entityType->name} by key",
+                'operationId' => "get{$entityType->name}ByKey",
+                'parameters' => [$keyParameter],
+                'responses' => [
+                    '200' => [
+                        'description' => "The {$entityType->name} entity.",
+                        'content' => [
+                            'application/json' => [
+                                'schema' => [
+                                    '$ref' => "#/components/schemas/{$entityType->name}",
+                                ],
+                            ],
+                        ],
+                    ],
+                    '404' => [
+                        'description' => "{$entityType->name} not found.",
+                    ],
+                ],
+            ];
+        }
+
+        if (self::supportsOperation($entityType, 'update')) {
+            $updatableProperties = self::getPropertyNamesByCapability($entityType, 'updatable');
+            $schemaRef = $updatableProperties !== []
+                ? ['$ref' => "#/components/schemas/{$entityType->name}Update"]
+                : ['$ref' => "#/components/schemas/{$entityType->name}"];
+
+            $pathItem['put'] = [
+                'summary' => "Replace a {$entityType->name}",
+                'operationId' => "update{$entityType->name}",
+                'parameters' => [$keyParameter],
+                'requestBody' => [
+                    'required' => true,
+                    'content' => [
+                        'application/json' => [
+                            'schema' => $schemaRef,
+                        ],
+                    ],
+                ],
+                'responses' => [
+                    '200' => [
+                        'description' => "The updated {$entityType->name} entity.",
+                        'content' => [
+                            'application/json' => [
+                                'schema' => [
+                                    '$ref' => "#/components/schemas/{$entityType->name}",
+                                ],
+                            ],
+                        ],
+                    ],
+                    '404' => [
+                        'description' => "{$entityType->name} not found.",
+                    ],
+                ],
+            ];
+
+            $pathItem['patch'] = [
+                'summary' => "Update a {$entityType->name}",
+                'operationId' => "patch{$entityType->name}",
+                'parameters' => [$keyParameter],
+                'requestBody' => [
+                    'required' => true,
+                    'content' => [
+                        'application/json' => [
+                            'schema' => $schemaRef,
+                        ],
+                    ],
+                ],
+                'responses' => [
+                    '200' => [
+                        'description' => "The updated {$entityType->name} entity.",
+                        'content' => [
+                            'application/json' => [
+                                'schema' => [
+                                    '$ref' => "#/components/schemas/{$entityType->name}",
+                                ],
+                            ],
+                        ],
+                    ],
+                    '404' => [
+                        'description' => "{$entityType->name} not found.",
+                    ],
+                ],
+            ];
+        }
+
+        if (self::supportsOperation($entityType, 'delete')) {
+            $pathItem['delete'] = [
+                'summary' => "Delete a {$entityType->name}",
+                'operationId' => "delete{$entityType->name}",
+                'parameters' => [$keyParameter],
+                'responses' => [
+                    '204' => [
+                        'description' => "{$entityType->name} deleted successfully.",
+                    ],
+                    '404' => [
+                        'description' => "{$entityType->name} not found.",
+                    ],
+                ],
+            ];
+        }
+
+        return $pathItem;
+    }
+
+    /**
+     * Build the key parameter definition for single entity paths.
+     *
+     * @return array<string, mixed>
+     */
+    private static function buildKeyParameter(EntityType $entityType): array
+    {
+        $keyProperty = null;
+
+        foreach ($entityType->properties as $property) {
+            if ($property->name === $entityType->keyProperty) {
+                $keyProperty = $property;
+
+                break;
+            }
+        }
+
+        $schema = $keyProperty !== null
+            ? self::edmTypeToJsonSchema($keyProperty->edmType)
+            : ['type' => 'string'];
+
+        return [
+            'name' => $entityType->keyProperty,
+            'in' => 'path',
+            'required' => true,
+            'schema' => $schema,
+            'description' => "The {$entityType->name} key.",
+        ];
+    }
+
+    /**
+     * Build a JSON Schema for creatable properties of an entity type.
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function buildCreateSchema(EntityType $entityType): ?array
+    {
+        $creatableProperties = self::getPropertyNamesByCapability($entityType, 'creatable');
+
+        if ($creatableProperties === []) {
+            return null;
+        }
+
+        $properties = [];
+        $required = [];
+
+        foreach ($entityType->properties as $property) {
+            if (!$property->creatable) {
+                continue;
+            }
+
+            $properties[$property->name] = self::edmTypeToJsonSchema($property->edmType);
+
+            if (!$property->nullable) {
+                $required[] = $property->name;
+            }
+        }
+
+        $schema = [
+            'type' => 'object',
+            'properties' => $properties,
+        ];
+
+        if ($required !== []) {
+            $schema['required'] = $required;
+        }
+
+        return $schema;
+    }
+
+    /**
+     * Build a JSON Schema for updatable properties of an entity type.
+     *
+     * All properties are optional in update schemas (for PATCH support).
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function buildUpdateSchema(EntityType $entityType): ?array
+    {
+        $updatableProperties = self::getPropertyNamesByCapability($entityType, 'updatable');
+
+        if ($updatableProperties === []) {
+            return null;
+        }
+
+        $properties = [];
+
+        foreach ($entityType->properties as $property) {
+            if (!$property->updatable) {
+                continue;
+            }
+
+            $properties[$property->name] = self::edmTypeToJsonSchema($property->edmType);
+        }
+
+        return [
+            'type' => 'object',
+            'properties' => $properties,
         ];
     }
 
@@ -213,6 +492,14 @@ class OpenApiGenerator
         }
 
         return $schema;
+    }
+
+    /**
+     * Check whether an entity type supports a given operation.
+     */
+    private static function supportsOperation(EntityType $entityType, string $operation): bool
+    {
+        return in_array($operation, $entityType->operations, true);
     }
 
     /**

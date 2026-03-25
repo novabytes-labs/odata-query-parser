@@ -5,7 +5,7 @@
 ![Code Style Status](https://img.shields.io/github/actions/workflow/status/novabytes-labs/odata-query-parser/ci.yml?label=code%20style&branch=master)
 [![Total Downloads](https://img.shields.io/packagist/dt/novabytes/odata-query-parser.svg)](https://packagist.org/packages/novabytes/odata-query-parser)
 
-A framework-agnostic OData 4 query string parser for PHP 8.2+. Parses `$filter`, `$select`, `$expand`, `$orderby`, `$top`, `$skip`, and `$count` into immutable AST objects.
+A framework-agnostic OData 4 parser for PHP 8.2+. Parses query strings (`$filter`, `$select`, `$expand`, `$orderby`, `$top`, `$skip`, `$count`) and resource paths (`/Products(1)/Category`) into immutable AST objects.
 
 Zero runtime dependencies.
 
@@ -177,6 +177,39 @@ $query->skip;  // 20
 $query->count; // true
 ```
 
+## Resource Path Parsing
+
+Parse OData resource paths (the URL path portion) into structured AST nodes:
+
+```php
+use NovaBytes\OData\Parser\ResourcePathParser;
+
+// Entity set collection
+$path = ResourcePathParser::parse('/Products');
+$path->entitySet;          // 'Products'
+$path->key;                // null
+$path->isSingleEntity();   // false
+
+// Single entity by key
+$path = ResourcePathParser::parse('/Products(1)');
+$path->key->getSingleValue();  // 1
+
+// String keys
+$path = ResourcePathParser::parse("/Products('abc')");
+$path->key->getSingleValue();  // 'abc'
+
+// Composite keys
+$path = ResourcePathParser::parse('/OrderItems(OrderId=1,ItemId=2)');
+$path->key->values;  // ['OrderId' => 1, 'ItemId' => 2]
+
+// Navigation segments
+$path = ResourcePathParser::parse('/Products(1)/Category');
+$path->navigationSegments[0]->property;  // 'Category'
+
+// GUID keys
+$path = ResourcePathParser::parse('/Products(01234567-89ab-cdef-0123-456789abcdef)');
+```
+
 ## AST Structure
 
 Every parsed result is an immutable (`readonly class`) AST node. The `$filter` expression tree uses these node types:
@@ -343,13 +376,14 @@ $product = new EntityType(
     keyProperty: 'Id',
     properties: [
         new PropertyMetadata('Id', 'Edm.Int64', nullable: false, filterable: true, sortable: true, selectable: true),
-        new PropertyMetadata('Name', 'Edm.String', nullable: false, filterable: true, sortable: true, selectable: true),
-        new PropertyMetadata('Price', 'Edm.Decimal', nullable: false, filterable: true, sortable: true, selectable: true),
+        new PropertyMetadata('Name', 'Edm.String', nullable: false, filterable: true, sortable: true, selectable: true, creatable: true, updatable: true),
+        new PropertyMetadata('Price', 'Edm.Decimal', nullable: false, filterable: true, sortable: true, selectable: true, creatable: true, updatable: true),
     ],
     navigationProperties: [
         new NavigationPropertyMetadata('Category', 'Category', isCollection: false),
         new NavigationPropertyMetadata('Reviews', 'Review', isCollection: true),
     ],
+    operations: ['read', 'create', 'update', 'delete'],
 );
 ```
 
@@ -368,18 +402,18 @@ EdmTypeResolver::resolve('boolean');   // 'Edm.Boolean'
 
 ### CSDL Generation
 
-Generate an OData v4 CSDL XML metadata document:
+Generate an OData v4 CSDL XML metadata document. When entity types have CRUD operations, capability annotations (`InsertRestrictions`, `UpdateRestrictions`, `DeleteRestrictions`) are included automatically:
 
 ```php
 use NovaBytes\OData\Metadata\CsdlGenerator;
 
 $xml = CsdlGenerator::generate('MyApp', [$product, $category]);
-// Returns valid OData v4 CSDL XML
+// Returns valid OData v4 CSDL XML with capability annotations
 ```
 
 ### OpenAPI Generation
 
-Generate an OpenAPI 3.0 specification:
+Generate an OpenAPI 3.0 specification. CRUD operations are reflected as separate paths and schemas:
 
 ```php
 use NovaBytes\OData\Metadata\OpenApiGenerator;
@@ -388,7 +422,13 @@ $spec = OpenApiGenerator::generate([$product, $category], [
     'title' => 'My OData API',
     'version' => '1.0.0',
 ]);
-// Returns a PHP array representing the OpenAPI spec
+// Generates:
+//   GET /Products           — list entities
+//   POST /Products          — create entity (with ProductCreate schema)
+//   GET /Products({Id})     — get single entity
+//   PUT /Products({Id})     — full replace (with ProductUpdate schema)
+//   PATCH /Products({Id})   — partial update
+//   DELETE /Products({Id})  — delete entity
 echo json_encode($spec, JSON_PRETTY_PRINT);
 ```
 

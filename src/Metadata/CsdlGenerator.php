@@ -11,6 +11,8 @@ use XMLWriter;
  */
 class CsdlGenerator
 {
+    private const CAPABILITIES_NAMESPACE = 'Org.OData.Capabilities.V1';
+
     /**
      * Generate a CSDL XML document for the given entity types.
      *
@@ -31,6 +33,10 @@ class CsdlGenerator
         $writer->writeAttribute('Version', '4.0');
         $writer->writeAttribute('xmlns:edmx', 'http://docs.oasis-open.org/odata/ns/edmx');
 
+        if (self::hasNonReadOperations($entityTypes)) {
+            self::writeCapabilitiesReference($writer);
+        }
+
         $writer->startElement('edmx:DataServices');
         $writer->startElement('Schema');
         $writer->writeAttribute('Namespace', $namespace);
@@ -46,6 +52,21 @@ class CsdlGenerator
         $writer->endDocument();
 
         return $writer->outputMemory();
+    }
+
+    /**
+     * Write the Reference element for the OData Capabilities vocabulary.
+     */
+    private static function writeCapabilitiesReference(XMLWriter $writer): void
+    {
+        $writer->startElement('edmx:Reference');
+        $writer->writeAttribute('Uri', 'https://docs.oasis-open.org/odata/odata-vocabularies/v4.0/vocabularies/Org.OData.Capabilities.V1.xml');
+
+        $writer->startElement('edmx:Include');
+        $writer->writeAttribute('Namespace', self::CAPABILITIES_NAMESPACE);
+        $writer->endElement(); // edmx:Include
+
+        $writer->endElement(); // edmx:Reference
     }
 
     /**
@@ -97,7 +118,7 @@ class CsdlGenerator
     }
 
     /**
-     * Write the EntityContainer element with EntitySet entries.
+     * Write the EntityContainer element with EntitySet entries and capability annotations.
      *
      * @param list<EntityType> $entityTypes
      */
@@ -110,9 +131,69 @@ class CsdlGenerator
             $writer->startElement('EntitySet');
             $writer->writeAttribute('Name', $entityType->entitySetName);
             $writer->writeAttribute('EntityType', "{$namespace}.{$entityType->name}");
+
+            self::writeCapabilityAnnotations($writer, $entityType);
+
             $writer->endElement(); // EntitySet
         }
 
         $writer->endElement(); // EntityContainer
+    }
+
+    /**
+     * Write capability restriction annotations for an entity set.
+     */
+    private static function writeCapabilityAnnotations(XMLWriter $writer, EntityType $entityType): void
+    {
+        $isInsertable = in_array('create', $entityType->operations, true);
+        $isUpdatable = in_array('update', $entityType->operations, true);
+        $isDeletable = in_array('delete', $entityType->operations, true);
+
+        // Only write annotations if there are non-default capabilities
+        if (!$isInsertable && !$isUpdatable && !$isDeletable) {
+            return;
+        }
+
+        self::writeRestrictionAnnotation($writer, 'InsertRestrictions', 'Insertable', $isInsertable);
+        self::writeRestrictionAnnotation($writer, 'UpdateRestrictions', 'Updatable', $isUpdatable);
+        self::writeRestrictionAnnotation($writer, 'DeleteRestrictions', 'Deletable', $isDeletable);
+    }
+
+    /**
+     * Write a single capability restriction annotation.
+     */
+    private static function writeRestrictionAnnotation(XMLWriter $writer, string $term, string $property, bool $value): void
+    {
+        $writer->startElement('Annotation');
+        $writer->writeAttribute('Term', self::CAPABILITIES_NAMESPACE . ".{$term}");
+
+        $writer->startElement('Record');
+
+        $writer->startElement('PropertyValue');
+        $writer->writeAttribute('Property', $property);
+        $writer->writeAttribute('Bool', $value ? 'true' : 'false');
+        $writer->endElement(); // PropertyValue
+
+        $writer->endElement(); // Record
+
+        $writer->endElement(); // Annotation
+    }
+
+    /**
+     * Check whether any entity type has non-read operations.
+     *
+     * @param list<EntityType> $entityTypes
+     */
+    private static function hasNonReadOperations(array $entityTypes): bool
+    {
+        foreach ($entityTypes as $entityType) {
+            foreach ($entityType->operations as $operation) {
+                if ($operation !== 'read') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }
